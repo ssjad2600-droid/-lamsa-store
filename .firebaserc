@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "lamsa-store-b9482"
+  },
+  "targets": {
+    "lamsa-store-b9482": {
+      "hosting": {
+        "main": ["lamsa-beauty"]
+      }
+    }
+  }
+}

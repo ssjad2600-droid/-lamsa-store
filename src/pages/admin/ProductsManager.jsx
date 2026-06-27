@@ -9,9 +9,6 @@ import AdminLayout from '../../components/admin/AdminLayout'
 const PLACEHOLDER = 'https://via.placeholder.com/300x300?text=%D9%84%D9%85%D8%B3%D8%A9'
 
 async function uploadImage(file) {
-  console.log('بدء رفع الصورة...')
-  console.log('ImgBB API Key:', import.meta.env.VITE_IMGBB_API_KEY)
-
   const formData = new FormData()
   formData.append('image', file)
 
@@ -20,7 +17,6 @@ async function uploadImage(file) {
     { method: 'POST', body: formData }
   )
   const data = await res.json()
-  console.log('نتيجة ImgBB:', data)
   if (!res.ok || !data.data?.url) throw new Error('فشل رفع الصورة: ' + JSON.stringify(data))
   return data.data.url
 }
@@ -58,6 +54,11 @@ function ProductModal({ product, onClose, onSave }) {
   function handleImage(e) {
     const file = e.target.files[0]
     if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors((prev) => ({ ...prev, _: 'حجم الصورة يتجاوز 5MB، اختاري صورة أصغر' }))
+      return
+    }
+    if (imagePreview && imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview)
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))
   }
@@ -79,9 +80,6 @@ function ProductModal({ product, onClose, onSave }) {
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setSaving(true)
-    console.log('بدء الحفظ...')
-    console.log('بيانات المنتج:', form)
-    console.log('هل يوجد صورة:', imageFile)
     try {
       let imageUrl = form.imageUrl || ''
       if (imageFile) imageUrl = await uploadImage(imageFile)
@@ -125,12 +123,17 @@ function ProductModal({ product, onClose, onSave }) {
     }`
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4" dir="rtl">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div ref={modalBodyRef} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div ref={modalBodyRef} className="relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-xl h-[92dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto flex flex-col">
+
+        {/* شريط السحب — موبايل فقط */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
 
         {/* رأس المودال */}
-        <div className="flex items-center justify-between px-6 py-5 bg-[#4A1942] rounded-t-2xl">
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-5 bg-[#4A1942] sm:rounded-t-2xl flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#C9956C] flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" className="w-4 h-4">
@@ -146,7 +149,7 @@ function ProductModal({ product, onClose, onSave }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 flex flex-col gap-4 sm:gap-5 flex-1 overflow-y-auto">
           {errors._ && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 flex-shrink-0">
@@ -188,7 +191,7 @@ function ProductModal({ product, onClose, onSave }) {
           </div>
 
           {/* الفئة والسعر */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>الفئة <span className="text-[#C9956C]">*</span></label>
               <select name="category" value={form.category} onChange={handleChange} className={`${inputCls(errors.category)} cursor-pointer`}>
@@ -300,7 +303,7 @@ export default function ProductsManager() {
       const merged = [
         ...staticProducts
           .filter((s) => !deletedIds.has(String(s.id)))
-          .map((s) => overrideMap[String(s.id)] || s),
+          .map((s) => overrideMap[String(s.id)] ? { ...s, ...overrideMap[String(s.id)] } : s),
         ...newFromFirestore,
       ]
       setProducts(merged)
@@ -368,16 +371,16 @@ export default function ProductsManager() {
 
   return (
     <AdminLayout>
-      <div className="p-8" dir="rtl">
+      <div className="p-4 sm:p-8" dir="rtl">
         {/* رأس */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start sm:items-center justify-between mb-6 gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">إدارة المنتجات</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">إدارة المنتجات</h2>
             <p className="text-gray-400 text-sm mt-1">{products.length} منتج في المتجر</p>
           </div>
           <button
             onClick={() => setModal('add')}
-            className="flex items-center gap-2 bg-[#C9956C] hover:bg-[#b8845c] text-white font-bold px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-[#C9956C]/25 text-sm"
+            className="flex items-center gap-2 bg-[#C9956C] hover:bg-[#b8845c] text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-[#C9956C]/25 text-sm flex-shrink-0"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
               <path fillRule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H4.5a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clipRule="evenodd" />
@@ -438,52 +441,106 @@ export default function ProductsManager() {
               {search ? 'لا توجد نتائج للبحث' : 'لا توجد منتجات بعد'}
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/50">
-                  {['الصورة', 'المنتج', 'الفئة', 'السعر', 'التقييم', 'مميز', 'الإجراءات'].map((h) => (
-                    <th key={h} className="text-right text-gray-500 font-semibold px-4 py-3 first:pr-6 last:pl-6">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
+            <>
+              {/* جدول — ديسك توب فقط */}
+              <div className="hidden sm:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/50">
+                      {['الصورة', 'المنتج', 'الفئة', 'السعر', 'التقييم', 'مميز', 'الإجراءات'].map((h) => (
+                        <th key={h} className="text-right text-gray-500 font-semibold px-4 py-3 first:pr-6 last:pl-6">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {filtered.map((p) => (
+                      <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-4 py-3 pr-6">
+                          {p.imageUrl ? (
+                            <img src={p.imageUrl} alt={p.name} className="w-10 h-10 object-cover rounded-lg" />
+                          ) : (
+                            <div className="w-10 h-10 bg-[#4A1942]/10 rounded-lg flex items-center justify-center text-[#4A1942]/40 text-lg">✿</div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-gray-800">{p.name}</p>
+                          {p.desc && <p className="text-gray-400 text-xs mt-0.5 line-clamp-1 max-w-[180px]">{p.desc}</p>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="bg-[#4A1942]/8 text-[#4A1942] text-xs font-medium px-2.5 py-1 rounded-full">{p.category}</span>
+                        </td>
+                        <td className="px-4 py-3 font-semibold text-gray-800">
+                          {Number(p.price || 0).toLocaleString('ar-IQ')} <span className="text-gray-400 font-normal">د.ع</span>
+                        </td>
+                        <td className="px-4 py-3"><Stars value={p.rating || 0} /></td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => handleToggleFeatured(p)} disabled={featuring === p.id}
+                            className={`p-1.5 rounded-lg transition-all ${p.featured ? 'text-amber-500 bg-amber-50 hover:bg-amber-100' : 'text-gray-300 hover:text-amber-400 hover:bg-amber-50'} disabled:opacity-50`}>
+                            {featuring === p.id ? (
+                              <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 pl-6">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setModal(p)} className="p-1.5 text-gray-400 hover:text-[#C9956C] hover:bg-[#C9956C]/10 rounded-lg transition-all">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
+                              </svg>
+                            </button>
+                            <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id}
+                              className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50">
+                              {deleting === p.id ? (
+                                <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                              ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                                  <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5.058l.347 9a.75.75 0 101.499-.058l-.346-9zm5.48.058a.75.75 0 10-1.498-.058l-.347 9a.75.75 0 001.5.058l.345-9z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* بطاقات — موبايل فقط */}
+              <div className="sm:hidden divide-y divide-gray-50">
                 {filtered.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                  <div key={p.id} className="flex items-center gap-3 px-4 py-3">
                     {/* صورة */}
-                    <td className="px-4 py-3 pr-6">
+                    <div className="flex-shrink-0">
                       {p.imageUrl ? (
-                        <img src={p.imageUrl} alt={p.name} className="w-10 h-10 object-cover rounded-lg" />
+                        <img src={p.imageUrl} alt={p.name} className="w-14 h-14 object-cover rounded-xl" />
                       ) : (
-                        <div className="w-10 h-10 bg-[#4A1942]/10 rounded-lg flex items-center justify-center text-[#4A1942]/40 text-lg">✿</div>
+                        <div className="w-14 h-14 bg-[#4A1942]/10 rounded-xl flex items-center justify-center text-[#4A1942]/40 text-2xl">✿</div>
                       )}
-                    </td>
-                    {/* اسم */}
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-gray-800">{p.name}</p>
-                      {p.desc && <p className="text-gray-400 text-xs mt-0.5 line-clamp-1 max-w-[180px]">{p.desc}</p>}
-                    </td>
-                    {/* فئة */}
-                    <td className="px-4 py-3">
-                      <span className="bg-[#4A1942]/8 text-[#4A1942] text-xs font-medium px-2.5 py-1 rounded-full">{p.category}</span>
-                    </td>
-                    {/* سعر */}
-                    <td className="px-4 py-3 font-semibold text-gray-800">
-                      {Number(p.price).toLocaleString('ar-IQ')} <span className="text-gray-400 font-normal">د.ع</span>
-                    </td>
-                    {/* تقييم */}
-                    <td className="px-4 py-3"><Stars value={p.rating || 0} /></td>
-                    {/* مميز */}
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleToggleFeatured(p)}
-                        disabled={featuring === p.id}
-                        title={p.featured ? 'إلغاء التمييز' : 'تمييز كمنتج مميز'}
-                        className={`p-1.5 rounded-lg transition-all ${
-                          p.featured
-                            ? 'text-amber-500 bg-amber-50 hover:bg-amber-100'
-                            : 'text-gray-300 hover:text-amber-400 hover:bg-amber-50'
-                        } disabled:opacity-50`}
-                      >
+                    </div>
+                    {/* معلومات */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        {p.featured && <span className="text-amber-400 text-xs">★</span>}
+                        <p className="font-semibold text-gray-800 text-sm truncate">{p.name}</p>
+                      </div>
+                      <span className="bg-[#4A1942]/8 text-[#4A1942] text-[10px] font-medium px-2 py-0.5 rounded-full">{p.category}</span>
+                      <p className="text-[#C9956C] font-bold text-sm mt-1">{Number(p.price).toLocaleString('ar-IQ')} <span className="text-gray-400 font-normal text-xs">د.ع</span></p>
+                    </div>
+                    {/* أزرار */}
+                    <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                      <button onClick={() => handleToggleFeatured(p)} disabled={featuring === p.id}
+                        className={`p-2 rounded-lg transition-all ${p.featured ? 'text-amber-500 bg-amber-50' : 'text-gray-300 hover:text-amber-400 hover:bg-amber-50'} disabled:opacity-50`}>
                         {featuring === p.id ? (
                           <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -495,42 +552,29 @@ export default function ProductsManager() {
                           </svg>
                         )}
                       </button>
-                    </td>
-                    {/* إجراءات */}
-                    <td className="px-4 py-3 pl-6">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setModal(p)}
-                          className="p-1.5 text-gray-400 hover:text-[#C9956C] hover:bg-[#C9956C]/10 rounded-lg transition-all"
-                          title="تعديل"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                            <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
+                      <button onClick={() => setModal(p)} className="p-2 text-gray-400 hover:text-[#C9956C] hover:bg-[#C9956C]/10 rounded-lg transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                          <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
+                        </svg>
+                      </button>
+                      <button onClick={() => handleDelete(p.id)} disabled={deleting === p.id}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50">
+                        {deleting === p.id ? (
+                          <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                           </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(p.id)}
-                          disabled={deleting === p.id}
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all disabled:opacity-50"
-                          title="حذف"
-                        >
-                          {deleting === p.id ? (
-                            <svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                            </svg>
-                          ) : (
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                              <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5.058l.347 9a.75.75 0 101.499-.058l-.346-9zm5.48.058a.75.75 0 10-1.498-.058l-.347 9a.75.75 0 001.5.058l.345-9z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                            <path fillRule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 013.878.512.75.75 0 11-.256 1.478l-.209-.035-1.005 13.07a3 3 0 01-2.991 2.77H8.084a3 3 0 01-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 01-.256-1.478A48.567 48.567 0 017.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 013.369 0c1.603.051 2.815 1.387 2.815 2.951zm-6.136-1.452a51.196 51.196 0 013.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 00-6 0v-.113c0-.794.609-1.428 1.364-1.452zm-.355 5.945a.75.75 0 10-1.5.058l.347 9a.75.75 0 101.499-.058l-.346-9zm5.48.058a.75.75 0 10-1.498-.058l-.347 9a.75.75 0 001.5.058l.345-9z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
       </div>

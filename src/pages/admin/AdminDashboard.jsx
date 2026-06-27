@@ -61,10 +61,10 @@ export default function AdminDashboard() {
 
   return (
     <AdminLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         {/* رأس الصفحة */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800">لوحة التحكم</h2>
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">لوحة التحكم</h2>
           <p className="text-gray-400 text-sm mt-1">مرحباً بكِ في إدارة متجر لمسة</p>
         </div>
 
